@@ -1,0 +1,12 @@
+{
+  "name": "signalk-victron-gui",
+  "version": "1.0.0",
+  "description": "Signal K Webapp: zeigt die Victron GUI v2 (Venus OS / GX) im Signal-K-Webapps-Menü an",
+  "keywords": ["signalk-webapp", "signalk-category-utility", "victron", "venus-os"],
+  "license": "MIT",
+  "files": ["public"],
+  "signalk": {
+    "displayName": "Victron GUI",
+    "appIcon": "./public/icon.svg"
+  }
+}

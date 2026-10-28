@@ -5,87 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Victron GUI</title>
 <style>
-:root{--bg:#0a1a24;--panel:#122b3a;--line:#24485e;--text:#e6f0f5;--mute:#8fb0c2;--acc:#3fa9f5}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
-#frame{position:fixed;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
-#gear{position:fixed;right:10px;bottom:10px;width:44px;height:44px;border-radius:50%;border:1px solid var(--line);background:var(--panel);color:var(--text);font-size:22px;opacity:.35;cursor:pointer;z-index:5}
-#gear:hover,#gear:focus-visible{opacity:1}
-#dlg{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(5,12,18,.8);z-index:10;padding:16px}
-#dlg.open{display:flex}
-.box{width:100%;max-width:460px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:20px}
-h1{font-size:1.15rem;margin:0 0 14px}
-label{display:block;color:var(--mute);font-size:.9rem;margin:12px 0 4px}
-input[type=url],input[type=number]{width:100%;padding:10px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);font:inherit}
-.row{display:flex;gap:8px;margin-top:18px;flex-wrap:wrap}
-button.b{flex:1;padding:10px 14px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--text);font:inherit;cursor:pointer}
-button.p{background:var(--acc);border-color:var(--acc);color:#04131c;font-weight:600}
-#msg{margin:12px 0 0;color:var(--mute);font-size:.88rem;min-height:1.2em}
-:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+html,body{height:100%;margin:0;background:#0a1a24;overflow:hidden}
+#frame{position:fixed;inset:0;width:100%;height:100%;border:0;background:#0a1a24}
+/* Nur im Direktmodus (ohne Proxy): Randstreifen, auf denen das App Dock Doppelklicks hört. */
+.edge{position:fixed;top:0;bottom:0;width:var(--edge,24px);z-index:5;background:transparent;touch-action:manipulation;display:none}
+body.direct .edge{display:block}
+#eL{left:0}
+#eR{right:0}
 </style>
 </head>
 <body>
 <iframe id="frame" title="Victron GUI v2" allow="fullscreen" referrerpolicy="no-referrer"></iframe>
-<button id="gear" aria-label="Einstellungen">⚙</button>
-
-<div id="dlg" role="dialog" aria-modal="true" aria-labelledby="t">
-  <div class="box">
-    <h1 id="t">Victron GUI verbinden</h1>
-    <label for="url">Adresse der GUI v2</label>
-    <input id="url" type="url" inputmode="url" placeholder="http://venus.local/gui-v2/">
-    <label for="rl">Automatisch neu laden (Minuten, 0 = aus)</label>
-    <input id="rl" type="number" min="0" step="1" value="0">
-    <div class="row">
-      <button class="b p" id="save">Speichern und laden</button>
-      <button class="b" id="open">In neuem Tab öffnen</button>
-      <button class="b" id="close">Schließen</button>
-    </div>
-    <p id="msg"></p>
-  </div>
-</div>
+<div class="edge" id="eL" aria-hidden="true"></div>
+<div class="edge" id="eR" aria-hidden="true"></div>
 
 <script>
 (function(){
-  // Hier die Standardadresse anpassen (z. B. feste IP des GX-Geräts):
+  // Direktmodus (Fallback, wenn das Proxy-Plugin nicht läuft). Dauerhaft ändern per ?url=http://192.168.x.x/gui-v2/
   var DEFAULT_URL = "http://venus.local/gui-v2/";
+  var DEFAULT_EDGE = 24;
   var K = "signalk-victron-gui";
-  var $ = function(id){return document.getElementById(id)};
-  var frame=$("frame"), dlg=$("dlg"), msg=$("msg"), timer=null;
+  var frame = document.getElementById("frame");
 
   function load(){ try{return JSON.parse(localStorage.getItem(K))||{}}catch(e){return {}} }
   function store(c){ try{localStorage.setItem(K,JSON.stringify(c))}catch(e){} }
 
-  var first = !load().url;
-  var cfg = load();
-  var q = new URLSearchParams(location.search).get("url");   // ...?url=http://192.168.1.50/gui-v2/
-  if(q){ cfg.url=q; store(cfg); first=false; }
-  if(!cfg.url) cfg.url = DEFAULT_URL;
+  var p = new URLSearchParams(location.search), cfg = load();
+  if(p.has("reset")) cfg = {};
+  if(p.get("url")) cfg.url = p.get("url");                                          // erzwingt Direktmodus
+  if(p.has("reload")) cfg.reload = Math.max(0, parseInt(p.get("reload"),10)||0);    // Minuten, 0 = aus
+  if(p.has("edge"))   cfg.edge   = Math.max(0, parseInt(p.get("edge"),10)||0);      // Pixel (nur Direktmodus)
+  store(cfg);
 
-  function apply(){
-    frame.src = cfg.url;
-    clearInterval(timer);
-    if(cfg.reload>0) timer=setInterval(function(){frame.src=cfg.url}, cfg.reload*60000);
+  var src = null;
+  function start(u, direct){
+    src = u; frame.src = u;
+    if(direct){
+      var edge = (cfg.edge===undefined) ? DEFAULT_EDGE : cfg.edge;
+      document.documentElement.style.setProperty("--edge", edge+"px");
+      if(edge>0) document.body.classList.add("direct");
+    }
+    if(cfg.reload>0) setInterval(function(){ frame.src = src; }, cfg.reload*60000);
   }
-  function openDlg(){
-    $("url").value=cfg.url; $("rl").value=cfg.reload||0;
-    msg.textContent = (location.protocol==="https:" && cfg.url.indexOf("http:")===0)
-      ? "Signal K läuft per HTTPS, die Adresse ist HTTP: der Browser blockiert das. Eine https-Adresse der GUI verwenden."
-      : "Lädt die Seite nicht, erlaubt sie evtl. kein Einbetten – dann „In neuem Tab öffnen“.";
-    dlg.classList.add("open"); $("url").focus();
-  }
-  $("gear").onclick=openDlg;
-  $("close").onclick=function(){dlg.classList.remove("open")};
-  $("open").onclick=function(){window.open($("url").value||cfg.url,"_blank","noopener")};
-  $("save").onclick=function(){
-    var u=$("url").value.trim();
-    if(!/^https?:\/\//i.test(u)){msg.textContent="Bitte eine Adresse mit http:// oder https:// eingeben.";return}
-    cfg={url:u,reload:Math.max(0,parseInt($("rl").value,10)||0)};
-    store(cfg); apply(); dlg.classList.remove("open");
-  };
-  document.addEventListener("keydown",function(e){if(e.key==="Escape")dlg.classList.remove("open")});
 
-  apply();
-  if(first) openDlg();
+  if(cfg.url){ start(cfg.url, true); return; }
+
+  // Proxy-Modus: Adresse kommt vom Plugin (gleicher Origin wie das App Dock -> Doppelklick überall)
+  fetch("/plugins/signalk-victron-gui/info", {credentials:"include"})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){ start(j.guiUrl, false); })
+    .catch(function(){ start(DEFAULT_URL, true); });
 })();
 </script>
 </body>

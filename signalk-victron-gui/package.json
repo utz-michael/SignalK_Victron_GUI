@@ -1,10 +1,12 @@
 {
   "name": "signalk-victron-gui",
-  "version": "1.0.0",
-  "description": "Signal K Webapp: zeigt die Victron GUI v2 (Venus OS / GX) im Signal-K-Webapps-Menü an",
-  "keywords": ["signalk-webapp", "signalk-category-utility", "victron", "venus-os"],
+  "version": "2.0.0",
+  "description": "Signal K Webapp + Plugin: zeigt die Victron GUI v2 (Venus OS / GX) unter dem Signal-K-Origin an, damit das App Dock Doppelklicks darin erkennt",
+  "main": "index.js",
+  "keywords": ["signalk-webapp", "signalk-node-server-plugin", "signalk-category-utility", "victron", "venus-os"],
   "license": "MIT",
-  "files": ["public"],
+  "files": ["index.js", "public"],
+  "signalk-plugin-enabled-by-default": true,
   "signalk": {
     "displayName": "Victron GUI",
     "appIcon": "./public/icon.svg"

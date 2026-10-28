@@ -21,7 +21,7 @@ body.direct .edge{display:block}
 
 <script>
 (function(){
-  // Direktmodus (Fallback, wenn das Proxy-Plugin nicht läuft). Dauerhaft ändern per ?url=http://192.168.x.x/gui-v2/
+  // Direktmodus (Fallback, wenn das Proxy-Plugin nicht antwortet). Adresse: ?url=http://192.168.x.x/gui-v2/
   var DEFAULT_URL = "http://venus.local/gui-v2/";
   var DEFAULT_EDGE = 24;
   var K = "signalk-victron-gui";
@@ -32,10 +32,22 @@ body.direct .edge{display:block}
 
   var p = new URLSearchParams(location.search), cfg = load();
   if(p.has("reset")) cfg = {};
-  if(p.get("url")) cfg.url = p.get("url");                                          // erzwingt Direktmodus
   if(p.has("reload")) cfg.reload = Math.max(0, parseInt(p.get("reload"),10)||0);    // Minuten, 0 = aus
   if(p.has("edge"))   cfg.edge   = Math.max(0, parseInt(p.get("edge"),10)||0);      // Pixel (nur Direktmodus)
+  var forced = p.get("url");                                                         // erzwingt Direktmodus
+  if(forced) cfg.url = forced;
   store(cfg);
+
+  // ?debug zeigt unten links, welcher Modus aktiv ist und warum
+  function note(t){
+    try{ console.log("[victron-gui] "+t); }catch(e){}
+    if(!p.has("debug")) return;
+    var d = document.getElementById("dbg");
+    if(!d){ d=document.createElement("div"); d.id="dbg";
+      d.style.cssText="position:fixed;left:8px;bottom:8px;z-index:20;max-width:90vw;padding:6px 10px;border-radius:6px;background:#122b3a;color:#e6f0f5;font:13px system-ui;border:1px solid #24485e";
+      document.body.appendChild(d); }
+    d.textContent = t;
+  }
 
   var src = null;
   function start(u, direct){
@@ -48,13 +60,22 @@ body.direct .edge{display:block}
     if(cfg.reload>0) setInterval(function(){ frame.src = src; }, cfg.reload*60000);
   }
 
-  if(cfg.url){ start(cfg.url, true); return; }
+  if(forced){ start(forced, true); note("Direktmodus (?url=): "+forced); return; }
 
-  // Proxy-Modus: Adresse kommt vom Plugin (gleicher Origin wie das App Dock -> Doppelklick überall)
+  // Proxy-Modus: Adresse kommt vom Plugin (gleicher Origin wie das App Dock -> Doppelklick überall).
+  // Ein evtl. gespeicherter Direkt-Link zählt nur als Fallback, nie als Vorrang.
   fetch("/plugins/signalk-victron-gui/info", {credentials:"include"})
-    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function(j){ start(j.guiUrl, false); })
-    .catch(function(){ start(DEFAULT_URL, true); });
+    .then(function(r){
+      if(!r.ok) throw new Error("HTTP "+r.status);
+      return r.json().catch(function(){ throw new Error("Antwort ist kein JSON (Plugin nicht geladen/aktiv?)"); });
+    })
+    .then(function(j){
+      if(!j || !j.guiUrl) throw new Error("ungültige Antwort");
+      start(j.guiUrl, false); note("Proxy-Modus: "+j.guiUrl);
+    })
+    .catch(function(e){
+      start(cfg.url || DEFAULT_URL, true); note("Direktmodus, Grund: "+e.message);
+    });
 })();
 </script>
 </body>

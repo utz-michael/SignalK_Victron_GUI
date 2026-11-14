@@ -25,11 +25,26 @@ Nur die statischen Dateien (HTML, JS, WASM) laufen über den Proxy. Die MQTT-Web
 
 ## Installation
 
+Das Paket liegt auf GitHub: <https://github.com/utz-michael/SignalK_Victron_GUI>  
+Es ist nicht im Signal-K-Appstore gelistet, daher die Installation per npm direkt aus dem Repository. Auf dem Rechner mit Signal K (z. B. dem Raspberry Pi):
+
 ```bash
 cd ~/.signalk
-npm install /pfad/zu/signalk-victron-gui
+npm install github:utz-michael/SignalK_Victron_GUI
 sudo systemctl restart signalk
 ```
+
+Hinweise dazu:
+
+- Für `github:…` muss `git` installiert sein (`sudo apt install git`).
+- Ohne `git` geht es auch über das Archiv. Dabei ist `main` der Name des Standard-Branches, bei `master` entsprechend ersetzen:
+  ```bash
+  cd ~/.signalk
+  npm install https://github.com/utz-michael/SignalK_Victron_GUI/archive/refs/heads/main.tar.gz
+  sudo systemctl restart signalk
+  ```
+- Der Paketname lautet `signalk-victron-gui`, so heißt auch der Ordner unter `~/.signalk/node_modules/`. Der Repository-Name (`SignalK_Victron_GUI`) spielt dafür keine Rolle.
+- Läuft Signal K nicht als Systemdienst (z. B. in Docker oder über `signalk-server` von Hand), den Server auf die dort übliche Weise neu starten.
 
 Anschließend im Admin-UI unter **Server → Plugin Config → Victron GUI (Proxy)** den Host bzw. die IP des GX-Geräts eintragen, das Plugin aktivieren und speichern.
 
@@ -38,6 +53,36 @@ Danach:
 - Die Webapp erscheint im Menü **Webapps** als „Victron GUI“ und ist direkt erreichbar unter  
   `http://<signalk-server>:3000/signalk-victron-gui/`
 - Im App Dock über **Plugin Config → App Dock → Discover Installed Webapps** aufnehmen.
+
+### Aktualisieren
+
+Der gleiche Befehl holt den aktuellen Stand aus GitHub:
+
+```bash
+cd ~/.signalk
+npm install github:utz-michael/SignalK_Victron_GUI
+sudo systemctl restart signalk
+```
+
+### Deinstallieren
+
+```bash
+cd ~/.signalk
+npm uninstall signalk-victron-gui
+sudo systemctl restart signalk
+```
+
+### Manuell (ohne npm-Link zu GitHub)
+
+```bash
+cd ~
+git clone https://github.com/utz-michael/SignalK_Victron_GUI.git
+cd ~/.signalk
+npm install ~/SignalK_Victron_GUI
+sudo systemctl restart signalk
+```
+
+Mit diesem Weg wird der Ordner nur verlinkt. Updates holst du dann mit `git pull` im Ordner `~/SignalK_Victron_GUI` und einem Neustart von Signal K.
 
 ## Plugin-Einstellungen
 
